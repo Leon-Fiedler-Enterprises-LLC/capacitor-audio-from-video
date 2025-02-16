@@ -1,5 +1,5 @@
 {
-  "name": "capacitor-audio-from-video",
+  "name": "@fiedlertech/capacitor-audio-from-video",
   "version": "1.1.8",
   "description": "Exctract Audio from Video file",
   "main": "dist/plugin.cjs.js",
@@ -11,7 +11,7 @@
     "android/build.gradle",
     "dist/",
     "ios/Plugin/",
-    "CapacitorAudioFromVideo.podspec"
+    "FiedlertechCapacitorAudioFromVideo.podspec"
   ],
   "author": "bazuka5801",
   "license": "MIT",

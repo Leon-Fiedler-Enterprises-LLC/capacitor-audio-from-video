@@ -26,14 +26,14 @@ npx cap sync
 ### extractAudio(...)
 
 ```typescript
-extractAudio(options: { path: string; outputPath: string; includeData?: boolean; }) => Promise<{ path: string; dataUrl?: string; }>
+extractAudio(options: { path: string; outputPath: string; includeData?: boolean; }) => any
 ```
 
 | Param         | Type                                                                      |
 | ------------- | ------------------------------------------------------------------------- |
 | **`options`** | <code>{ path: string; outputPath: string; includeData?: boolean; }</code> |
 
-**Returns:** <code>Promise&lt;{ path: string; dataUrl?: string; }&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -41,14 +41,14 @@ extractAudio(options: { path: string; outputPath: string; includeData?: boolean;
 ### compressVideo(...)
 
 ```typescript
-compressVideo(options: { path: string; outputPath: string; width: number; height: number; bitrate: number; }) => Promise<{ path: string; }>
+compressVideo(options: { path: string; outputPath: string; width: number; height: number; bitrate: number; }) => any
 ```
 
 | Param         | Type                                                                                               |
 | ------------- | -------------------------------------------------------------------------------------------------- |
 | **`options`** | <code>{ path: string; outputPath: string; width: number; height: number; bitrate: number; }</code> |
 
-**Returns:** <code>Promise&lt;{ path: string; }&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -64,7 +64,7 @@ addListener(eventName: 'compressProgress', listenerFunc: (event: { progress: num
 | **`eventName`**    | <code>'compressProgress'</code>                        |
 | **`listenerFunc`** | <code>(event: { progress: number; }) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -74,8 +74,8 @@ addListener(eventName: 'compressProgress', listenerFunc: (event: { progress: num
 
 #### PluginListenerHandle
 
-| Prop         | Type                                      |
-| ------------ | ----------------------------------------- |
-| **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
+| Prop         | Type                      |
+| ------------ | ------------------------- |
+| **`remove`** | <code>() =&gt; any</code> |
 
 </docgen-api>

@@ -8,6 +8,7 @@ import android.net.Uri;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import android.util.Base64;
@@ -30,20 +31,58 @@ public class AudioFromVideoRetriever {
         void onExtractionProgress(Double progress);
     }
 
-    public File getFileObject(String path, ContentResolver resolver) {
-        Uri u = Uri.parse(path);
-        if (u != null && "content".equals(u.getScheme())) {
-            Cursor cursor = resolver.query(u, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
-            cursor.moveToFirst();
-            String filePath = cursor.getString(0);
-            cursor.close();
-            return new File(filePath);
-        }
-        if (u.getScheme() == null || u.getScheme().equals("file")) {
-            return new File(u.getPath());
+public File getFileObject(String path, ContentResolver resolver) {
+    if (path == null) {
+        return null;
+    }
+
+    Uri uri = Uri.parse(path);
+    if (uri == null) {
+        return null;
+    }
+
+    // Handle content URIs
+    if ("content".equals(uri.getScheme())) {
+        try {
+            Cursor cursor = resolver.query(uri, new String[]{android.provider.MediaStore.Images.ImageColumns.DATA}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                String filePath = cursor.getString(0);
+                cursor.close();
+                if (filePath != null) {
+                    return new File(filePath);
+                } else {
+                    // Fallback: copy the content to a temporary file
+                    InputStream is = resolver.openInputStream(uri);
+                    if(is != null) {
+                        File tempFile = File.createTempFile("audio_temp", ".tmp");
+                        FileOutputStream fos = new FileOutputStream(tempFile);
+                        byte[] buffer = new byte[4096];
+                        int read;
+                        while ((read = is.read(buffer)) != -1) {
+                            fos.write(buffer, 0, read);
+                        }
+                        fos.close();
+                        is.close();
+                        return tempFile;
+                    }
+                }
+            } else if(cursor != null) {
+                cursor.close();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file path from content URI", e);
         }
         return null;
     }
+
+    // Handle file URIs or raw paths
+    if (uri.getScheme() == null || "file".equals(uri.getScheme())) {
+        String filePath = uri.getPath();
+        return filePath != null ? new File(filePath) : null;
+    }
+
+    return null;
+}
 
 
 
