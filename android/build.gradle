@@ -11,14 +11,14 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.0'
+        classpath 'com.android.tools.build:gradle:8.1.0'
     }
 }
 
 apply plugin: 'com.android.library'
 
 android {
-    namespace "com.bazumax.capacitor.audio.from.video"
+    namespace "com.fiedlertech.capacitor.audio.from.video"
     compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 33
     defaultConfig {
         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 22
@@ -55,7 +55,4 @@ dependencies {
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation 'com.arthenica:ffmpeg-kit-min-gpl:6.0-2.LTS'
-//    implementation files("ffmpeg-kit/prebuilt/aar-default/ffmpeg-kit/ffmpeg-kit.aar")
-//    implementation 'com.arthenica:smart-exception-java:0.2.1'
 }

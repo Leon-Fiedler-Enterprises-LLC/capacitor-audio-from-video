@@ -14,7 +14,6 @@ npx cap sync
 <docgen-index>
 
 * [`extractAudio(...)`](#extractaudio)
-* [`compressVideo(...)`](#compressvideo)
 * [`addListener('compressProgress', ...)`](#addlistenercompressprogress)
 * [Interfaces](#interfaces)
 
@@ -29,35 +28,21 @@ npx cap sync
 extractAudio(options: { path: string; outputPath: string; includeData?: boolean; }) => any
 ```
 
+
 | Param         | Type                                                                      |
 | ------------- | ------------------------------------------------------------------------- |
 | **`options`** | <code>{ path: string; outputPath: string; includeData?: boolean; }</code> |
 
-**Returns:** <code>any</code>
+**Returns:** <code>any</code></code>
 
---------------------
-
-
-### compressVideo(...)
-
-```typescript
-compressVideo(options: { path: string; outputPath: string; width: number; height: number; bitrate: number; }) => any
-```
-
-| Param         | Type                                                                                               |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| **`options`** | <code>{ path: string; outputPath: string; width: number; height: number; bitrate: number; }</code> |
-
-**Returns:** <code>any</code>
-
---------------------
-
+---
 
 ### addListener('compressProgress', ...)
 
 ```typescript
 addListener(eventName: 'compressProgress', listenerFunc: (event: { progress: number; }) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
 ```
+
 
 | Param              | Type                                                   |
 | ------------------ | ------------------------------------------------------ |
@@ -66,13 +51,12 @@ addListener(eventName: 'compressProgress', listenerFunc: (event: { progress: num
 
 **Returns:** <code>any</code>
 
---------------------
-
+---
 
 ### Interfaces
 
-
 #### PluginListenerHandle
+
 
 | Prop         | Type                      |
 | ------------ | ------------------------- |
