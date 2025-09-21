@@ -14,8 +14,6 @@ npx cap sync
 <docgen-index>
 
 * [`extractAudio(...)`](#extractaudio)
-* [`addListener('compressProgress', ...)`](#addlistenercompressprogress)
-* [Interfaces](#interfaces)
 
 </docgen-index>
 
@@ -25,41 +23,15 @@ npx cap sync
 ### extractAudio(...)
 
 ```typescript
-extractAudio(options: { path: string; outputPath: string; includeData?: boolean; }) => any
+extractAudio(options: { path: string; outputPath?: string; includeData?: boolean; }) => Promise<{ path: string; dataUrl?: string; fileSize: number; mimeType: string; }>
 ```
 
+| Param         | Type                                                                       |
+| ------------- | -------------------------------------------------------------------------- |
+| **`options`** | <code>{ path: string; outputPath?: string; includeData?: boolean; }</code> |
 
-| Param         | Type                                                                      |
-| ------------- | ------------------------------------------------------------------------- |
-| **`options`** | <code>{ path: string; outputPath: string; includeData?: boolean; }</code> |
+**Returns:** <code>Promise&lt;{ path: string; dataUrl?: string; fileSize: number; mimeType: string; }&gt;</code>
 
-**Returns:** <code>any</code></code>
-
----
-
-### addListener('compressProgress', ...)
-
-```typescript
-addListener(eventName: 'compressProgress', listenerFunc: (event: { progress: number; }) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
-```
-
-
-| Param              | Type                                                   |
-| ------------------ | ------------------------------------------------------ |
-| **`eventName`**    | <code>'compressProgress'</code>                        |
-| **`listenerFunc`** | <code>(event: { progress: number; }) =&gt; void</code> |
-
-**Returns:** <code>any</code>
-
----
-
-### Interfaces
-
-#### PluginListenerHandle
-
-
-| Prop         | Type                      |
-| ------------ | ------------------------- |
-| **`remove`** | <code>() =&gt; any</code> |
+--------------------
 
 </docgen-api>

@@ -59,17 +59,43 @@ public class AudioFromVideoRetrieverPlugin extends Plugin {
 
         ContentResolver resolver = bridge.getContext().getContentResolver();
         File inputFile = implementation.getFileObject(path, resolver);
-        File outputFile = implementation.getFileObject(outputPath, resolver);
+        File outputFile = (outputPath == null || outputPath.isEmpty())
+                ? new File(bridge.getContext().getCacheDir(), "afv_tmp_" + System.currentTimeMillis() + ".tmp")
+                : implementation.getFileObject(outputPath, resolver);
 
         implementation.extractAudio(inputFile, outputFile, new AudioFromVideoRetriever.ExtractionCallback() {
             @Override
             public void onExtractionCompleted(File audioFile, String mimeType) throws IOException {
-                JSObject ret = new JSObject();
-                if (includeData) {
-                    ret.put("dataUrl", implementation.getDataUrlFromAudioFile(audioFile, mimeType));
-                }
-                ret.put("path", outputPath);
-                call.resolve(ret);
+				// If the extension of outputPath doesn't match mimeType, rename file to correct extension
+				String desiredExt = mimeType != null && mimeType.equals("audio/mpeg") ? ".mp3" : ".m4a";
+				String finalPath = outputPath;
+				try {
+					String abs = audioFile.getAbsolutePath();
+					int lastDot = abs.lastIndexOf('.')
+							;
+					String candidate;
+					if (lastDot > 0) {
+						candidate = abs.substring(0, lastDot) + desiredExt;
+					} else {
+						candidate = abs + desiredExt;
+					}
+					if (!abs.endsWith(desiredExt)) {
+						File renamed = new File(candidate);
+						if (audioFile.renameTo(renamed)) {
+							finalPath = renamed.getAbsolutePath();
+							audioFile = renamed;
+						}
+					}
+				} catch (Exception ignored) {}
+
+				JSObject ret = new JSObject();
+				if (includeData) {
+					ret.put("dataUrl", implementation.getDataUrlFromAudioFile(audioFile, mimeType));
+				}
+				ret.put("path", finalPath);
+				ret.put("mimeType", mimeType);
+				ret.put("fileSize", audioFile.length());
+				call.resolve(ret);
             }
 
             @Override

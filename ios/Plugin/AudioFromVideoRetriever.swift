@@ -25,17 +25,46 @@ import AVFoundation
             return
         }
         
-        let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough)
-        exportSession?.outputFileType = AVFileType.m4a
-        exportSession?.outputURL = outputURL
-        exportSession?.timeRange = timeRangeToUse
-        exportSession?.fileLengthLimit = Int64(9.9 * 1024 * 1024)
-        
-        exportSession?.exportAsynchronously {
-            if exportSession?.status == .completed {
-                completion(outputURL, nil)
-            } else if let error = exportSession?.error {
-                completion(nil, error)
+        func startExport(preset: String, fallback: Bool, _ done: @escaping (Bool, Error?) -> Void) {
+            // Remove any pre-existing file at destination to avoid errors
+            try? FileManager.default.removeItem(at: outputURL)
+            guard let session = AVAssetExportSession(asset: composition, presetName: preset) else {
+                done(false, NSError(domain: "AudioExtractionError", code: -2, userInfo: [NSLocalizedDescriptionKey: "Export session not available for preset \(preset)"]))
+                return
+            }
+            session.outputFileType = .m4a
+            session.outputURL = outputURL
+            session.timeRange = timeRangeToUse
+            session.fileLengthLimit = Int64(9.9 * 1024 * 1024) // ~10 MB
+            session.exportAsynchronously {
+                switch session.status {
+                case .completed:
+                    done(true, nil)
+                case .failed, .cancelled:
+                    done(false, session.error)
+                default:
+                    done(false, session.error)
+                }
+            }
+        }
+
+        // Prefer passthrough when supported, else fall back to Apple M4A
+        let supported = AVAssetExportSession.exportPresets(compatibleWith: composition)
+        let canPassthrough = supported.contains(AVAssetExportPresetPassthrough)
+
+        if canPassthrough {
+            startExport(preset: AVAssetExportPresetPassthrough, fallback: false) { ok, err in
+                if ok {
+                    completion(outputURL, nil)
+                } else {
+                    startExport(preset: AVAssetExportPresetAppleM4A, fallback: true) { ok2, err2 in
+                        completion(ok2 ? outputURL : nil, ok2 ? nil : (err2 ?? err))
+                    }
+                }
+            }
+        } else {
+            startExport(preset: AVAssetExportPresetAppleM4A, fallback: true) { ok, err in
+                completion(ok ? outputURL : nil, err)
             }
         }
     }
