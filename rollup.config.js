@@ -4,7 +4,7 @@ export default {
     {
       file: 'dist/plugin.js',
       format: 'iife',
-      name: 'capacitorAudioFromVideoRetriever',
+      name: 'capacitorMedia',
       globals: {
         '@capacitor/core': 'capacitorExports',
       },

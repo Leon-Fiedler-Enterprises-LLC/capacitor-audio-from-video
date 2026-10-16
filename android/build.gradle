@@ -19,7 +19,7 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    namespace "com.fiedlertech.capacitor.audio.from.video"
+    namespace "com.fiedlertech.capacitor.media"
     compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 33
     defaultConfig {
         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 22
@@ -52,7 +52,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    // StillVideo: share videos and audio speed changes (Transformer encodes, Mp4Muxer assembles).
+    // Share videos and audio speed changes (Transformer encodes, Mp4Muxer assembles).
     implementation "androidx.media3:media3-transformer:$media3Version"
     implementation "androidx.media3:media3-muxer:$media3Version"
     implementation "androidx.media3:media3-common:$media3Version"

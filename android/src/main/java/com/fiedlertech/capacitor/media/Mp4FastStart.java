@@ -1,4 +1,4 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
 import java.io.File;
 import java.io.FileOutputStream;

@@ -1,7 +1,19 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
-export interface AudioFromVideoRetrieverPlugin {
-  extractAudio(options: { path: string, outputPath?: string, includeData?: boolean }): Promise<{ path: string, dataUrl?: string, fileSize: number, mimeType: string }>;
+export interface ExtractAudioOptions {
+  /** The video or audio file, as the file picker returns it. */
+  path: string;
+  /** Where to write the audio. Defaults to a new file in the cache directory. */
+  outputPath?: string;
+  /** Also returns the audio as a data URL. */
+  includeData?: boolean;
+}
+
+export interface ExtractAudioResult {
+  path: string;
+  dataUrl?: string;
+  fileSize: number;
+  mimeType: string;
 }
 
 export interface CreateStillVideoOptions {
@@ -33,11 +45,16 @@ export interface ChangeAudioSpeedOptions {
 }
 
 /**
- * Share videos (one still frame over a generation's audio): H.264 + AAC-LC in an MP4 with the moov
- * atom first. Also the audio alone at another speed, as AAC-LC in an .m4a (neither platform has an
- * MP3 encoder). AVFoundation on iOS, Media3 Transformer on Android; not registered on the web.
+ * The app's media processing on iOS (AVFoundation) and Android (MediaCodec, Media3 Transformer);
+ * not registered on the web.
+ *
+ * - extractAudio: the audio of a video or audio file, cut and shrunk for upload.
+ * - Share videos (one still frame over a generation's audio): H.264 + AAC-LC in an MP4 with the
+ *   moov atom first.
+ * - The audio alone at another speed, as AAC-LC in an .m4a (neither platform has an MP3 encoder).
  */
-export interface StillVideoPlugin {
+export interface MediaPlugin {
+  extractAudio(options: ExtractAudioOptions): Promise<ExtractAudioResult>;
   /**
    * Starts downloading the inputs of a likely createStillVideo() (and the encoder) ahead of time,
    * e.g. when a share sheet opens. Replaces the previous call's downloads.
@@ -48,3 +65,9 @@ export interface StillVideoPlugin {
   /** 0...1 while createStillVideo() encodes the audio. */
   addListener(eventName: 'progress', listenerFunc: (event: { progress: number }) => void): Promise<PluginListenerHandle>;
 }
+
+/**
+ * @deprecated The plugin's name before it became Media, with only extractAudio. Binaries built
+ * before the rename register only this one; newer binaries keep it for older web bundles.
+ */
+export type AudioFromVideoRetrieverPlugin = Pick<MediaPlugin, 'extractAudio'>;

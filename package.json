@@ -1,7 +1,7 @@
 {
-  "name": "@fiedlertech/capacitor-audio-from-video",
-  "version": "1.1.8",
-  "description": "Exctract Audio from Video file",
+  "name": "@fiedlertech/capacitor-media",
+  "version": "2.0.0",
+  "description": "Native media processing: audio extraction, share videos and audio speed changes",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -11,7 +11,7 @@
     "android/build.gradle",
     "dist/",
     "ios/Plugin/",
-    "FiedlertechCapacitorAudioFromVideo.podspec"
+    "FiedlertechCapacitorMedia.podspec"
   ],
   "author": "bazuka5801",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "eslint": "eslint . --ext ts",
     "prettier": "prettier \"**/*.{css,html,ts,js,java}\"",
     "swiftlint": "node-swiftlint",
-    "docgen": "docgen --api AudioFromVideoRetrieverPlugin --output-readme README.md --output-json dist/docs.json",
+    "docgen": "docgen --api MediaPlugin --output-readme README.md --output-json dist/docs.json",
     "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.js",
     "clean": "rimraf ./dist",
     "watch": "tsc --watch",

@@ -1,5 +1,6 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
+import android.Manifest;
 import android.net.Uri;
 import android.os.HandlerThread;
 import android.util.Base64;
@@ -7,10 +8,10 @@ import android.util.Base64;
 import androidx.annotation.Nullable;
 
 import com.getcapacitor.JSObject;
-import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -34,12 +35,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Share videos, and shared audio at another playback speed, on Android: StillVideoEncoder behind
- * Capacitor calls, with the same methods, options and results as StillVideoPlugin.swift. The app
- * keeps ffmpeg.wasm for the web and for builds without this plugin.
+ * The app's media processing on Android, with the same methods, options and results as
+ * MediaPlugin.swift: extractAudio (AudioExtractor), and share videos and shared audio at another
+ * playback speed (StillVideoEncoder). The app keeps ffmpeg.wasm for the web and for builds without
+ * this plugin.
  */
-@CapacitorPlugin(name = "StillVideo")
-public class StillVideoPlugin extends Plugin {
+@CapacitorPlugin(name = "Media", permissions = {
+    @Permission(alias = "storage-old", strings = { Manifest.permission.READ_EXTERNAL_STORAGE })
+})
+public class MediaPlugin extends AudioExtractionPlugin {
 
     private static final List<String> AUDIO_EXTENSIONS = Arrays.asList("mp3", "m4a", "aac", "wav", "aif", "aiff", "caf", "mp4", "m4v", "mov", "ogg", "opus", "webm", "flac");
     private static final String LOCAL_FILE_PREFIX = "/_capacitor_file_";

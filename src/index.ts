@@ -1,7 +1,11 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { AudioFromVideoRetrieverPlugin, StillVideoPlugin } from './definitions';
+import type { AudioFromVideoRetrieverPlugin, MediaPlugin } from './definitions';
 
+// No web implementation: Capacitor.isPluginAvailable('Media') is the capability check.
+const Media = registerPlugin<MediaPlugin>('Media');
+
+/** @deprecated Use Media. Only for binaries built before the rename, which lack it. */
 const AudioFromVideoRetriever = registerPlugin<AudioFromVideoRetrieverPlugin>(
   'AudioFromVideoRetriever',
   {
@@ -9,8 +13,5 @@ const AudioFromVideoRetriever = registerPlugin<AudioFromVideoRetrieverPlugin>(
   },
 );
 
-// No web implementation: Capacitor.isPluginAvailable('StillVideo') is the capability check.
-const StillVideo = registerPlugin<StillVideoPlugin>('StillVideo');
-
 export * from './definitions';
-export { AudioFromVideoRetriever, StillVideo };
+export { AudioFromVideoRetriever, Media };

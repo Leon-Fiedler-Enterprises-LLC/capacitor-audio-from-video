@@ -1,4 +1,4 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
 import android.content.Context;
 import android.graphics.Bitmap;

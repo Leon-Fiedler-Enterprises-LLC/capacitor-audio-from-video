@@ -1,6 +1,5 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
-import android.Manifest;
 import android.content.ContentResolver;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -11,24 +10,18 @@ import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
-import com.getcapacitor.annotation.CapacitorPlugin;
-import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.File;
 import java.io.IOException;
 
-@CapacitorPlugin(name = "AudioFromVideoRetriever", permissions = {
-    @Permission(
-            alias = "storage-old",
-            strings = {
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-    )
-})
-public class AudioFromVideoRetrieverPlugin extends Plugin {
+/**
+ * extractAudio, shared by Media and its AudioFromVideoRetriever alias. Subclasses declare the
+ * "storage-old" permission (READ_EXTERNAL_STORAGE) in their @CapacitorPlugin annotation.
+ */
+public abstract class AudioExtractionPlugin extends Plugin {
 
-    private AudioFromVideoRetriever implementation = new AudioFromVideoRetriever();
+    private AudioExtractor implementation = new AudioExtractor();
 
     public String getStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -63,7 +56,7 @@ public class AudioFromVideoRetrieverPlugin extends Plugin {
                 ? new File(bridge.getContext().getCacheDir(), "afv_tmp_" + System.currentTimeMillis() + ".tmp")
                 : implementation.getFileObject(outputPath, resolver);
 
-        implementation.extractAudio(inputFile, outputFile, new AudioFromVideoRetriever.ExtractionCallback() {
+        implementation.extractAudio(inputFile, outputFile, new AudioExtractor.ExtractionCallback() {
             @Override
             public void onExtractionCompleted(File audioFile, String mimeType) throws IOException {
 				// If the extension of outputPath doesn't match mimeType, rename file to correct extension

@@ -1,4 +1,4 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;

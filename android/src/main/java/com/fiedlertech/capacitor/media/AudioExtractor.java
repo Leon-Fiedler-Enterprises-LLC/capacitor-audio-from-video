@@ -1,4 +1,4 @@
-package com.fiedlertech.capacitor.audio.from.video;
+package com.fiedlertech.capacitor.media;
 
 import android.content.ContentResolver;
 import android.database.Cursor;
@@ -26,7 +26,7 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-public class AudioFromVideoRetriever {
+public class AudioExtractor {
 
     public interface ExtractionCallback {
         void onExtractionCompleted(File file, String mimeType) throws IOException;

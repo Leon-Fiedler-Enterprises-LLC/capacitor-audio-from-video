@@ -2,19 +2,27 @@ import Capacitor
 import CoreGraphics
 import Foundation
 
-/// Share videos, and shared audio at another playback speed, on iOS: StillVideoEncoder behind
-/// Capacitor calls. The app keeps ffmpeg.wasm for Android, the web and builds without this plugin.
-@objc(StillVideoPlugin)
-public class StillVideoPlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "StillVideoPlugin"
-    public let jsName = "StillVideo"
+/// The app's media processing on iOS: extractAudio (AudioExtractor), and share videos and shared
+/// audio at another playback speed (StillVideoEncoder). The app keeps ffmpeg.wasm for the web and
+/// builds without this plugin.
+@objc(MediaPlugin)
+public class MediaPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "MediaPlugin"
+    public let jsName = "Media"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "extractAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "prepare", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "createStillVideo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "changeAudioSpeed", returnType: CAPPluginReturnPromise),
     ]
 
+    private let audioExtractor = AudioExtractor()
     private let prefetch = Prefetch()
+
+    /// The audio of a video or audio file, cut and shrunk for upload (see AudioExtractor).
+    @objc func extractAudio(_ call: CAPPluginCall) {
+        audioExtractor.extractAudio(call)
+    }
 
     /// Starts the downloads and the encoder while the share sheet is open. The audio download
     /// alone (a signed CDN URL) takes about 0.4 s, several times the encode of a short message.
@@ -166,10 +174,10 @@ private final class Prefetch: @unchecked Sendable {
         lock.lock()
         let previous = audioDownload
         if previous?.source != source {
-            audioDownload = source.map { source in (source, Task { try await StillVideoPlugin.downloadAudio(source) }) }
+            audioDownload = source.map { source in (source, Task { try await MediaPlugin.downloadAudio(source) }) }
         }
         imageDownloads = Dictionary(uniqueKeysWithValues: Set(sources).map { source in
-            (source, imageDownloads[source] ?? Task { try await StillVideoPlugin.data(from: source) })
+            (source, imageDownloads[source] ?? Task { try await MediaPlugin.data(from: source) })
         })
         lock.unlock()
         if let previous, previous.source != source {
