@@ -65,9 +65,3 @@ export interface MediaPlugin {
   /** 0...1 while createStillVideo() encodes the audio. */
   addListener(eventName: 'progress', listenerFunc: (event: { progress: number }) => void): Promise<PluginListenerHandle>;
 }
-
-/**
- * @deprecated The plugin's name before it became Media, with only extractAudio. Binaries built
- * before the rename register only this one; newer binaries keep it for older web bundles.
- */
-export type AudioFromVideoRetrieverPlugin = Pick<MediaPlugin, 'extractAudio'>;

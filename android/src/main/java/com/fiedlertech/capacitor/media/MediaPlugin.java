@@ -1,17 +1,22 @@
 package com.fiedlertech.capacitor.media;
 
 import android.Manifest;
+import android.content.ContentResolver;
 import android.net.Uri;
+import android.os.Build;
 import android.os.HandlerThread;
 import android.util.Base64;
 
 import androidx.annotation.Nullable;
 
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
+import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -37,17 +42,17 @@ import java.util.concurrent.Future;
 /**
  * The app's media processing on Android, with the same methods, options and results as
  * MediaPlugin.swift: extractAudio (AudioExtractor), and share videos and shared audio at another
- * playback speed (StillVideoEncoder). The app keeps ffmpeg.wasm for the web and for builds without
- * this plugin.
+ * playback speed (StillVideoEncoder).
  */
 @CapacitorPlugin(name = "Media", permissions = {
     @Permission(alias = "storage-old", strings = { Manifest.permission.READ_EXTERNAL_STORAGE })
 })
-public class MediaPlugin extends AudioExtractionPlugin {
+public class MediaPlugin extends Plugin {
 
     private static final List<String> AUDIO_EXTENSIONS = Arrays.asList("mp3", "m4a", "aac", "wav", "aif", "aiff", "caf", "mp4", "m4v", "mov", "ogg", "opus", "webm", "flac");
     private static final String LOCAL_FILE_PREFIX = "/_capacitor_file_";
 
+    private final AudioExtractor audioExtractor = new AudioExtractor();
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final Prefetch prefetch = new Prefetch();
     private HandlerThread encoderThread;
@@ -64,6 +69,76 @@ public class MediaPlugin extends AudioExtractionPlugin {
     protected void handleOnDestroy() {
         executor.shutdown();
         if (encoderThread != null) encoderThread.quitSafely();
+    }
+
+    private String getStoragePermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? "" : "storage-old";
+    }
+
+    @PermissionCallback
+    private void videoPermsCallback(PluginCall call) {
+        if (getPermissionState(getStoragePermission()) == PermissionState.GRANTED) {
+            extractAudio(call);
+        } else {
+            call.reject("Permission is required to take a picture");
+        }
+    }
+
+    /** The audio of a video or audio file, cut and shrunk for upload (see AudioExtractor). */
+    @PluginMethod
+    public void extractAudio(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && getPermissionState(getStoragePermission()) != PermissionState.GRANTED) {
+            requestPermissionForAlias(getStoragePermission(), call, "videoPermsCallback");
+            return;
+        }
+        String path = call.getString("path");
+        String outputPath = call.getString("outputPath");
+        Boolean includeData = call.getBoolean("includeData", false);
+
+        ContentResolver resolver = getContext().getContentResolver();
+        File inputFile = audioExtractor.getFileObject(path, resolver);
+        File outputFile = (outputPath == null || outputPath.isEmpty())
+                ? new File(getContext().getCacheDir(), "afv_tmp_" + System.currentTimeMillis() + ".tmp")
+                : audioExtractor.getFileObject(outputPath, resolver);
+
+        audioExtractor.extractAudio(inputFile, outputFile, new AudioExtractor.ExtractionCallback() {
+            @Override
+            public void onExtractionCompleted(File audioFile, String mimeType) throws IOException {
+                // If the extension of outputPath doesn't match mimeType, rename file to correct extension
+                String desiredExt = mimeType != null && mimeType.equals("audio/mpeg") ? ".mp3" : ".m4a";
+                String finalPath = outputPath;
+                try {
+                    String abs = audioFile.getAbsolutePath();
+                    int lastDot = abs.lastIndexOf('.');
+                    String candidate = lastDot > 0 ? abs.substring(0, lastDot) + desiredExt : abs + desiredExt;
+                    if (!abs.endsWith(desiredExt)) {
+                        File renamed = new File(candidate);
+                        if (audioFile.renameTo(renamed)) {
+                            finalPath = renamed.getAbsolutePath();
+                            audioFile = renamed;
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                JSObject ret = new JSObject();
+                if (includeData) {
+                    ret.put("dataUrl", audioExtractor.getDataUrlFromAudioFile(audioFile, mimeType));
+                }
+                ret.put("path", finalPath);
+                ret.put("mimeType", mimeType);
+                ret.put("fileSize", audioFile.length());
+                call.resolve(ret);
+            }
+
+            @Override
+            public void onExtractionFailed(String errorMessage) {
+                call.reject(errorMessage);
+            }
+
+            @Override
+            public void onExtractionProgress(Double progress) {
+            }
+        });
     }
 
     /**

@@ -6,9 +6,7 @@ Native media processing for Capacitor apps (iOS: AVFoundation, Android: MediaCod
 - `createStillVideo`: a share video, one still frame over an audio file
 - `changeAudioSpeed`: audio at another speed with the pitch kept
 
-The plugin registers as `Media`. Until every supported binary has `Media`, it also registers its old
-name, `AudioFromVideoRetriever` (only `extractAudio`), so web bundles from before the rename keep
-working through Live Updates.
+The plugin registers as `Media`; it has no web implementation.
 
 ## Install
 
