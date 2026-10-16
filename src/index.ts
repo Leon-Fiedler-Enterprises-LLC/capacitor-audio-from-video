@@ -1,6 +1,6 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { AudioFromVideoRetrieverPlugin } from './definitions';
+import type { AudioFromVideoRetrieverPlugin, StillVideoPlugin } from './definitions';
 
 const AudioFromVideoRetriever = registerPlugin<AudioFromVideoRetrieverPlugin>(
   'AudioFromVideoRetriever',
@@ -9,5 +9,8 @@ const AudioFromVideoRetriever = registerPlugin<AudioFromVideoRetrieverPlugin>(
   },
 );
 
+// No web implementation: Capacitor.isPluginAvailable('StillVideo') is the capability check.
+const StillVideo = registerPlugin<StillVideoPlugin>('StillVideo');
+
 export * from './definitions';
-export { AudioFromVideoRetriever };
+export { AudioFromVideoRetriever, StillVideo };

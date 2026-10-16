@@ -3,6 +3,7 @@ ext {
     androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.6.1'
     androidxJunitVersion = project.hasProperty('androidxJunitVersion') ? rootProject.ext.androidxJunitVersion : '1.1.5'
     androidxEspressoCoreVersion = project.hasProperty('androidxEspressoCoreVersion') ? rootProject.ext.androidxEspressoCoreVersion : '3.5.1'
+    media3Version = project.hasProperty('media3Version') ? rootProject.ext.media3Version : '1.11.1'
 }
 
 buildscript {
@@ -51,4 +52,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    // StillVideo: share videos and audio speed changes (Transformer encodes, Mp4Muxer assembles).
+    implementation "androidx.media3:media3-transformer:$media3Version"
+    implementation "androidx.media3:media3-muxer:$media3Version"
+    implementation "androidx.media3:media3-common:$media3Version"
+    implementation "androidx.media3:media3-container:$media3Version"
 }
