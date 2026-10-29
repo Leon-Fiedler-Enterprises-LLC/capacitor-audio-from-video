@@ -30,12 +30,16 @@ import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.DefaultAssetLoaderFactory;
 import androidx.media3.transformer.DefaultEncoderFactory;
 import androidx.media3.transformer.EditedMediaItem;
+import androidx.media3.transformer.EncoderSelector;
+import androidx.media3.transformer.EncoderUtil;
 import androidx.media3.transformer.ExportException;
 import androidx.media3.transformer.ExportResult;
 import androidx.media3.transformer.InAppMp4Muxer;
 import androidx.media3.transformer.Transformer;
 import androidx.media3.transformer.VideoEncoderSettings;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -68,6 +72,12 @@ final class StillVideoEncoder {
     static final int SEGMENT_SECONDS = 10;
     static final int AUDIO_BIT_RATE = 128_000;
     private static final int BACKGROUND = 0xFF13161D;
+    /** Media3's is 10 s, short for a slow phone that encodes the audio at the same time. */
+    private static final long MAX_DELAY_BETWEEN_SAMPLES_MS = 20_000;
+
+    /** Android's own H.264 encoders, for phones whose hardware encoder fails on the segment. */
+    private static final EncoderSelector SOFTWARE_ENCODERS = mimeType -> ImmutableList.copyOf(Iterables.filter(
+            EncoderUtil.getSupportedEncoders(mimeType), info -> !EncoderUtil.isHardwareAccelerated(info, mimeType)));
 
     interface ProgressListener {
         /** 0...1. */
@@ -93,6 +103,8 @@ final class StillVideoEncoder {
     private final Handler handler;
     private final ExecutorService executor;
     private volatile boolean warmedUp;
+    /** Set once a hardware export fails: the rest of the process encodes in software. */
+    private volatile boolean softwareEncoder;
 
     StillVideoEncoder(Context context, Looper looper, ExecutorService executor) {
         this.context = context.getApplicationContext();
@@ -198,9 +210,11 @@ final class StillVideoEncoder {
             output = tempFile(".mp4");
             Bitmap frame = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888);
             frame.eraseColor(BACKGROUND);
-            await(exportSegment(frame, 1, false, output));
-        } catch (Exception ignored) {
+            await(exportSegment(frame, 1, false, softwareEncoder, output));
+        } catch (Exception e) {
             warmedUp = false;
+            // The real export would fail the same way: it goes straight to software.
+            if (e instanceof ExportException) softwareEncoder = true;
         } finally {
             //noinspection ResultOfMethodCallIgnored
             if (output != null) output.delete();
@@ -284,7 +298,15 @@ final class StillVideoEncoder {
     private Segment encodeSegment(Bitmap frame, int frames, boolean hd) throws Exception {
         File file = tempFile(".mp4");
         try {
-            await(exportSegment(frame, frames, hd, file));
+            try {
+                await(exportSegment(frame, frames, hd, softwareEncoder, file));
+            } catch (ExportException e) {
+                if (softwareEncoder) throw e;
+                // Hardware encoders of some Android 8-11 phones stall on the segment until Media3's
+                // muxer watchdog ends the export. Android's software encoder copes with these few frames.
+                softwareEncoder = true;
+                await(exportSegment(frame, frames, hd, true, file));
+            }
             return readSegment(file);
         } finally {
             //noinspection ResultOfMethodCallIgnored
@@ -296,7 +318,7 @@ final class StillVideoEncoder {
      * The frame shown for {@code frames} seconds at 1 fps: one keyframe, then frames that only
      * repeat it. Portrait frames may come out rotated to landscape, with the rotation in the track.
      */
-    private ListenableFuture<ExportResult> exportSegment(Bitmap frame, int frames, boolean hd, File output) {
+    private ListenableFuture<ExportResult> exportSegment(Bitmap frame, int frames, boolean hd, boolean software, File output) {
         MediaItem mediaItem = new MediaItem.Builder()
                 .setUri(Uri.parse("stillvideo://frame"))
                 .setMimeType(MimeTypes.IMAGE_PNG)
@@ -312,8 +334,12 @@ final class StillVideoEncoder {
         Transformer.Builder transformer = new Transformer.Builder(context)
                 .setVideoMimeType(MimeTypes.VIDEO_H264)
                 .setAssetLoaderFactory(new DefaultAssetLoaderFactory(context, new FrameLoader(frame)))
-                .setEncoderFactory(new DefaultEncoderFactory.Builder(context).setRequestedVideoEncoderSettings(settings).build())
-                .setMuxerFactory(new InAppMp4Muxer.Factory().setAttemptStreamableOutputEnabled(false));
+                .setEncoderFactory(new DefaultEncoderFactory.Builder(context)
+                        .setVideoEncoderSelector(software ? SOFTWARE_ENCODERS : EncoderSelector.DEFAULT)
+                        .setRequestedVideoEncoderSettings(settings)
+                        .build())
+                .setMuxerFactory(new InAppMp4Muxer.Factory().setAttemptStreamableOutputEnabled(false))
+                .setMaxDelayBetweenMuxerSamplesMs(MAX_DELAY_BETWEEN_SAMPLES_MS);
         return export(transformer, item, output);
     }
 
