@@ -8,7 +8,11 @@ import android.os.HandlerThread;
 import android.util.Base64;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.transformer.ExportException;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -189,7 +193,7 @@ public class MediaPlugin extends Plugin {
                 result.put("duration", duration);
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                reject(call, e);
             } finally {
                 if (audioFile != null && audioFile.temporary) {
                     //noinspection ResultOfMethodCallIgnored
@@ -220,7 +224,7 @@ public class MediaPlugin extends Plugin {
                 result.put("duration", duration);
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                reject(call, e);
             } finally {
                 if (audioFile != null && audioFile.temporary) {
                     //noinspection ResultOfMethodCallIgnored
@@ -383,9 +387,24 @@ public class MediaPlugin extends Plugin {
         while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
     }
 
-    private static String message(Exception e) {
+    /**
+     * Rejects with the failure's own message, a code (Media3's error code name, else the exception
+     * class) and its cause chain as data.causes. Media3 messages alone are generic ("Muxer error").
+     */
+    @OptIn(markerClass = UnstableApi.class)
+    private static void reject(PluginCall call, Exception e) {
         Throwable error = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
-        return error.getMessage() != null ? error.getMessage() : error.toString();
+        String code = error instanceof ExportException
+                ? ((ExportException) error).getErrorCodeName()
+                : error.getClass().getSimpleName();
+        JSArray causes = new JSArray();
+        // Capped: a cause chain can loop back on itself.
+        for (Throwable cause = error.getCause(); cause != null && causes.length() < 8; cause = cause.getCause()) {
+            causes.put(cause.getMessage() != null ? cause.getClass().getName() + ": " + cause.getMessage() : cause.getClass().getName());
+        }
+        JSObject data = new JSObject();
+        data.put("causes", causes);
+        call.reject(error.getMessage() != null ? error.getMessage() : error.toString(), code, e, data);
     }
 
     /** Downloads started by prepare(), for the message whose share sheet is open. */
