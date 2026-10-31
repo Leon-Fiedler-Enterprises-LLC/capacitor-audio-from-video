@@ -30,16 +30,12 @@ import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.DefaultAssetLoaderFactory;
 import androidx.media3.transformer.DefaultEncoderFactory;
 import androidx.media3.transformer.EditedMediaItem;
-import androidx.media3.transformer.EncoderSelector;
-import androidx.media3.transformer.EncoderUtil;
 import androidx.media3.transformer.ExportException;
 import androidx.media3.transformer.ExportResult;
 import androidx.media3.transformer.InAppMp4Muxer;
 import androidx.media3.transformer.Transformer;
 import androidx.media3.transformer.VideoEncoderSettings;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -74,10 +70,9 @@ final class StillVideoEncoder {
     private static final int BACKGROUND = 0xFF13161D;
     /** Media3's is 10 s, short for a slow phone that encodes the audio at the same time. */
     private static final long MAX_DELAY_BETWEEN_SAMPLES_MS = 20_000;
-
-    /** Android's own H.264 encoders, for phones whose hardware encoder fails on the segment. */
-    private static final EncoderSelector SOFTWARE_ENCODERS = mimeType -> ImmutableList.copyOf(Iterables.filter(
-            EncoderUtil.getSupportedEncoders(mimeType), info -> !EncoderUtil.isHardwareAccelerated(info, mimeType)));
+    /** Set on phones whose Transformer export failed, so later videos skip it from the start. */
+    private static final String PREFERENCES = "fiedlertech-media";
+    private static final String BUFFER_ENCODER = "stillVideoBufferEncoder";
 
     interface ProgressListener {
         /** 0...1. */
@@ -103,13 +98,19 @@ final class StillVideoEncoder {
     private final Handler handler;
     private final ExecutorService executor;
     private volatile boolean warmedUp;
-    /** Set once a hardware export fails: the rest of the process encodes in software. */
-    private volatile boolean softwareEncoder;
+    /** Set once a Transformer export fails: segments come from BufferSegmentEncoder from then on. */
+    private volatile boolean bufferEncoder;
 
     StillVideoEncoder(Context context, Looper looper, ExecutorService executor) {
         this.context = context.getApplicationContext();
         this.handler = new Handler(looper);
         this.executor = executor;
+        this.bufferEncoder = this.context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getBoolean(BUFFER_ENCODER, false);
+    }
+
+    private void useBufferEncoder() {
+        bufferEncoder = true;
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(BUFFER_ENCODER, true).apply();
     }
 
     /** Writes the video and returns its duration in seconds. */
@@ -203,18 +204,18 @@ final class StillVideoEncoder {
      * the real one.
      */
     void warmUp() {
-        if (warmedUp) return;
+        if (warmedUp || bufferEncoder) return;
         warmedUp = true;
         File output = null;
         try {
             output = tempFile(".mp4");
             Bitmap frame = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888);
             frame.eraseColor(BACKGROUND);
-            await(exportSegment(frame, 1, false, softwareEncoder, output));
+            await(exportSegment(frame, 1, false, output));
         } catch (Exception e) {
             warmedUp = false;
-            // The real export would fail the same way: it goes straight to software.
-            if (e instanceof ExportException) softwareEncoder = true;
+            // The real export would fail the same way: it skips Transformer.
+            if (e instanceof ExportException) useBufferEncoder();
         } finally {
             //noinspection ResultOfMethodCallIgnored
             if (output != null) output.delete();
@@ -294,31 +295,30 @@ final class StillVideoEncoder {
 
     // Exports
 
-    /** The segment's H.264 frames, from Transformer's export. */
+    /** The segment's H.264 frames, from Transformer's export, else from BufferSegmentEncoder. */
     private Segment encodeSegment(Bitmap frame, int frames, boolean hd) throws Exception {
-        File file = tempFile(".mp4");
-        try {
+        if (!bufferEncoder) {
+            File file = tempFile(".mp4");
             try {
-                await(exportSegment(frame, frames, hd, softwareEncoder, file));
+                await(exportSegment(frame, frames, hd, file));
+                return readSegment(file);
             } catch (ExportException e) {
-                if (softwareEncoder) throw e;
-                // Hardware encoders of some Android 8-11 phones stall on the segment until Media3's
-                // muxer watchdog ends the export. Android's software encoder copes with these few frames.
-                softwareEncoder = true;
-                await(exportSegment(frame, frames, hd, true, file));
+                // On some Android 7-11 phones the export stalls until Media3's muxer watchdog ends it,
+                // with the hardware and the software encoder alike (VOICES-AI-MOBILE-APP-N12).
+                useBufferEncoder();
+            } finally {
+                //noinspection ResultOfMethodCallIgnored
+                file.delete();
             }
-            return readSegment(file);
-        } finally {
-            //noinspection ResultOfMethodCallIgnored
-            file.delete();
         }
+        return BufferSegmentEncoder.encode(frame, frames, videoBitRate(frame.getWidth(), frame.getHeight(), hd));
     }
 
     /**
      * The frame shown for {@code frames} seconds at 1 fps: one keyframe, then frames that only
      * repeat it. Portrait frames may come out rotated to landscape, with the rotation in the track.
      */
-    private ListenableFuture<ExportResult> exportSegment(Bitmap frame, int frames, boolean hd, boolean software, File output) {
+    private ListenableFuture<ExportResult> exportSegment(Bitmap frame, int frames, boolean hd, File output) {
         MediaItem mediaItem = new MediaItem.Builder()
                 .setUri(Uri.parse("stillvideo://frame"))
                 .setMimeType(MimeTypes.IMAGE_PNG)
@@ -335,7 +335,6 @@ final class StillVideoEncoder {
                 .setVideoMimeType(MimeTypes.VIDEO_H264)
                 .setAssetLoaderFactory(new DefaultAssetLoaderFactory(context, new FrameLoader(frame)))
                 .setEncoderFactory(new DefaultEncoderFactory.Builder(context)
-                        .setVideoEncoderSelector(software ? SOFTWARE_ENCODERS : EncoderSelector.DEFAULT)
                         .setRequestedVideoEncoderSettings(settings)
                         .build())
                 .setMuxerFactory(new InAppMp4Muxer.Factory().setAttemptStreamableOutputEnabled(false))
@@ -402,12 +401,12 @@ final class StillVideoEncoder {
     }
 
     /** An encoded segment: its format (with the SPS and PPS) and its frames, from its start. */
-    private static final class Segment {
+    static final class Segment {
         MediaFormat format;
         final List<Sample> frames = new ArrayList<>();
     }
 
-    private static final class Sample {
+    static final class Sample {
         final byte[] data;
         final long timeUs;
         final boolean keyframe;
